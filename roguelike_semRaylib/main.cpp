@@ -20,7 +20,7 @@ struct Vec2 {
     int y;
 };
 
-enum Tela { MENU, CLASSES, JOGO, AJUDA, ITENS, PONTUACAO, LEVELUP, VITORIA, DERROTA, BATALHA, SAFE_ROOM, LOJA };
+enum Tela { MENU, CLASSES, JOGO, AJUDA, ITENS, PONTUACAO, LORE, LEVELUP, VITORIA, DERROTA, BATALHA, SAFE_ROOM, LOJA };
 enum ClasseJogador { SEM_CLASSE, GUERREIRO, MAGO, LADINO, DEUS };
 enum TileTipo { CHAO, PAREDE, PORTA, ARMADILHA, SAIDA };
 
@@ -109,6 +109,12 @@ void LimparTelaCompleta() {
     SetConsoleCursorPosition(hOut, inicio);
 }
 
+void VoltarMenuLimpo() {
+    LimparTelaCompleta();
+    mensagem = "";
+    textoBatalha = "";
+    tela = MENU;
+}
 
 void LimparFimLinha() {
     // Limpa do ponto atual ate o fim da linha sem imprimir varios espacos.
@@ -165,6 +171,20 @@ bool FaseComBoss(int nivel) {
     return nivel % 3 == 0;
 }
 
+string NomeBossAtual() {
+    if (nivelAtual == 3) return "Riff Vale";
+    if (nivelAtual == 6) return "Melodia Vale";
+    if (nivelAtual == 9) return "Maestro Noctis";
+    return "Guardiao da Cripta";
+}
+
+string ParentescoBossAtual() {
+    if (nivelAtual == 3) return "seu irmao";
+    if (nivelAtual == 6) return "sua mae";
+    if (nivelAtual == 9) return "seu pai";
+    return "um guardiao";
+}
+
 void SetMensagem(const string& txt) {
     mensagem = txt;
 }
@@ -191,6 +211,7 @@ void RevelarMapa() {
 void AplicarClasse(ClasseJogador c) {
     player.classe = c;
     player.nomeClasse = NomeClasse(c);
+    // Lore: o protagonista da aventura se chama Armon Vale.
 
     if (c == GUERREIRO) {
         player.simbolo = "⚔️";
@@ -378,7 +399,7 @@ void NovoJogo(ClasseJogador classeEscolhida) {
     nivelAtual = 1;
     GerarMapa(nivelAtual);
     tela = JOGO;
-    SetMensagem("Classe escolhida: " + player.nomeClasse + ". Entre na masmorra e sobreviva.");
+    SetMensagem("Armon Vale entrou na Cripta Perdida como " + player.nomeClasse + ".");
 }
 
 void NovoJogoFaseFinalTeste() {
@@ -576,7 +597,7 @@ void EncerrarBatalha(bool venceu) {
 
             bossDerrotado = true;
             AplicarBonusBoss();
-            SetMensagem("Boss derrotado! 💀 SAFE ROOM liberada.");
+            SetMensagem(NomeBossAtual() + " foi derrotado! 💀 SAFE ROOM liberada.");
         } else {
             SetMensagem("Inimigo derrotado! +" + to_string(recompensa) + " moedas.");
         }
@@ -688,7 +709,7 @@ void IniciarBatalha(int idx) {
     if (inimigos[idx].vida <= 0) return;
     inimigoBatalha = idx;
     tela = BATALHA;
-    textoBatalha = inimigos[idx].boss ? "O chefe apareceu! Escolha sua acao." : "Um inimigo apareceu! Escolha sua acao.";
+    textoBatalha = inimigos[idx].boss ? (NomeBossAtual() + ", " + ParentescoBossAtual() + ", apareceu! Escolha sua acao.") : "Um inimigo apareceu! Escolha sua acao.";
 }
 
 Vec2 MelhorPassoPerseguicao(const Inimigo &e) {
@@ -970,6 +991,7 @@ void DesenharBatalha() {
     Inimigo &e = inimigos[inimigoBatalha];
 
     cout << (e.boss ? "💀 BATALHA CONTRA O BOSS 💀\n" : "👾 BATALHA 👾\n");
+    if (e.boss) cout << "Chefe: " << NomeBossAtual() << " (" << ParentescoBossAtual() << ")\n";
     cout << "\nInimigo HP: " << max(0, e.vida) << "/" << e.vidaMax << " | Dano: " << e.dano << "\n";
     cout << player.simbolo << " " << player.nomeClasse << " HP: " << max(0, player.vida) << "/" << player.vidaMax
          << " | Pocoes: " << player.pocao
@@ -995,12 +1017,13 @@ void DesenharLoja() {
 }
 
 void DesenharMenu() {
-    LimparTela();
+    LimparTelaCompleta();
     cout << "🏰 ROGUE DA CRIPTA PERDIDA 🏰\n\n";
     cout << "[ENTER] Escolher classe\n";
     cout << "[1] Como funciona\n";
     cout << "[2] Itens\n";
     cout << "[3] Pontuacao\n";
+    cout << "[4] Lore\n";
     cout << "[ESC] Sair\n";
 }
 
@@ -1058,7 +1081,8 @@ int main() {
             else if (c == '1') tela = AJUDA;
             else if (c == '2') tela = ITENS;
             else if (c == '3') tela = PONTUACAO;
-            else if (c == 27) rodando = false;
+            else if (c == '4') tela = LORE;
+            else if (c == 27) { LimparTelaCompleta(); rodando = false; }
         } else if (tela == CLASSES) {
             DesenharClasses();
             int c = _getch();
@@ -1067,11 +1091,7 @@ int main() {
             else if (c == '3') NovoJogo(LADINO);
             else if (c == '9') NovoJogo(DEUS);
             else if (c == '7') NovoJogoFaseFinalTeste();
-            else if (c == 27) {
-                    LimparTelaCompleta();
-                    mensagem = "";
-                    tela = MENU;
-                }
+            else if (c == 27) VoltarMenuLimpo();
         } else if (tela == JOGO) {
             static DWORD ultimoMovimentoInimigo = GetTickCount();
 
@@ -1095,11 +1115,7 @@ int main() {
                     }
                     if (idx != -1) IniciarBatalha(idx);
                     else SetMensagem("Nenhum inimigo perto para batalhar.");
-                } else if (c == 27) {
-                    LimparTelaCompleta();
-                    mensagem = "";
-                    tela = MENU;
-                }
+                } else if (c == 27) VoltarMenuLimpo();
             }
 
             DWORD agora = GetTickCount();
@@ -1109,7 +1125,8 @@ int main() {
                 if (player.vida <= 0) tela = DERROTA;
             }
 
-            Sleep(35);
+            // Sleep minimo para nao travar o processador e manter a limpeza/desenho do texto estavel.
+            Sleep(1);
         } else if (tela == SAFE_ROOM) {
             DesenharSafeRoom();
             int c = _getch();
@@ -1119,11 +1136,12 @@ int main() {
             else if (c == 'a' || c == 'A') TentarMoverJogador(-1, 0);
             else if (c == 'd' || c == 'D') TentarMoverJogador(1, 0);
             else if (c == 'e' || c == 'E') InteragirSafeRoom();
-            else if (c == 27) tela = MENU;
+            else if (c == 27) VoltarMenuLimpo();
         } else if (tela == BATALHA) {
             DesenharBatalha();
             int c = _getch();
-            if (c == '1') AcaoBatalha(1);
+            if (c == 27) VoltarMenuLimpo();
+            else if (c == '1') AcaoBatalha(1);
             else if (c == '2') AcaoBatalha(2);
             else if (c == '3') AcaoBatalha(3);
         } else if (tela == LOJA) {
@@ -1136,6 +1154,7 @@ int main() {
             else if (c == '4') ComprarLoja(4);
             else if (c == '5') ComprarLoja(5);
             else if (c == 13) SairLojaEAvancar();
+            else if (c == 27) VoltarMenuLimpo();
         } else if (tela == LEVELUP) {
             DesenharLevelUp();
             int c = _getch();
@@ -1143,6 +1162,7 @@ int main() {
             else if (c == '2') DistribuirAtributo(2);
             else if (c == '3') DistribuirAtributo(3);
             else if (c == '4') DistribuirAtributo(4);
+            else if (c == 27) VoltarMenuLimpo();
         } else if (tela == AJUDA) {
             DesenharTexto("COMO FUNCIONA", {
                 "Explore 9 fases, revele o mapa escuro e sobreviva ate o boss final.",
@@ -1151,7 +1171,7 @@ int main() {
                 "Mate todos os inimigos para liberar a chave.",
                 "A cada 3 fases existe um boss; depois dele abre uma SAFE ROOM."
             });
-            if (_getch() == 27) tela = MENU;
+            if (_getch() == 27) VoltarMenuLimpo();
         } else if (tela == ITENS) {
             DesenharTexto("ITENS", {
                 "🧪 Pocao: cura na batalha e gasta uma rodada.",
@@ -1160,7 +1180,22 @@ int main() {
                 "✨ Cristal: concede experiencia.",
                 "🕳️ Armadilha: causa dano, exceto no Ladino."
             });
-            if (_getch() == 27) tela = MENU;
+            if (_getch() == 27) VoltarMenuLimpo();
+        } else if (tela == LORE) {
+            DesenharTexto("LORE - A CRIPTA PERDIDA", {
+                "Armon Vale nasceu da uniao entre uma humana e um demonio da Cripta Perdida.",
+                "Criado longe das trevas, ele viveu sem conhecer sua verdadeira origem.",
+                "Ao descobrir que sua familia dominava a cripta e espalhava sofrimento pelo reino,",
+                "Armon decidiu descer ate as profundezas e enfrentar o proprio sangue.",
+                "",
+                "Fase 3 - Riff Vale, seu irmao.",
+                "Fase 6 - Melodia Vale, sua mae.",
+                "Fase 9 - Maestro Noctis, seu pai e Senhor da Cripta.",
+                "",
+                "Somente derrotando sua linhagem Armon podera quebrar a maldicao",
+                "ou assumir para sempre o trono da Cripta Perdida."
+            });
+            if (_getch() == 27) VoltarMenuLimpo();
         } else if (tela == PONTUACAO) {
             DesenharTexto("PONTUACAO", {
                 "+ pontos por itens, portas, inimigos, bosses e progresso.",
@@ -1168,18 +1203,18 @@ int main() {
                 "- pontos por excesso de movimentos e armadilhas.",
                 "O HUD mostra vida, classe, dinheiro, arma, XP e atributos."
             });
-            if (_getch() == 27) tela = MENU;
+            if (_getch() == 27) VoltarMenuLimpo();
         } else if (tela == VITORIA) {
             LimparTelaCompleta();
             cout << "🏆 PARABENS! 🏆\n\n";
-            cout << "Voce derrotou o Boss Final da Cripta Perdida.\n";
+            cout << "Armon Vale derrotou Maestro Noctis, seu pai e Senhor da Cripta.\n";
             cout << "Obrigado por jogar este projeto.\n";
             cout << "Fim da aventura.\n\n";
             cout << "Pontuacao final: " << player.score << "\n\n";
             cout << "ENTER: jogar novamente | ESC: menu\n";
             int c = _getch();
             if (c == 13) tela = CLASSES;
-            else if (c == 27) tela = MENU;
+            else if (c == 27) VoltarMenuLimpo();
         } else if (tela == DERROTA) {
             LimparTela();
             cout << "💀 DERROTA 💀\n";
@@ -1188,7 +1223,7 @@ int main() {
             cout << "ENTER: tentar novamente | ESC: menu\n";
             int c = _getch();
             if (c == 13) tela = CLASSES;
-            else if (c == 27) tela = MENU;
+            else if (c == 27) VoltarMenuLimpo();
         }
     }
 
